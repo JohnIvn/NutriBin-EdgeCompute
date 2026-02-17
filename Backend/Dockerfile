@@ -17,9 +17,6 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # Build the NestJS app
 RUN npm run build
 
-# Ensure `static` exists so downstream COPY won't fail when no static assets are produced
-RUN mkdir -p static
-
 # ---------- Runtime stage ----------
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -29,9 +26,8 @@ ENV NODE_ENV=production
 COPY --from=builder /app/package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
-# Copy built artifacts and static folder
+# Copy built artifacts folder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/static ./static
 
 # Railway provides PORT
 ENV PORT=3000
