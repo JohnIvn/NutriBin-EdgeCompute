@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Video Feed Monitoring</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h1>Live Video Feed</h1>
+    <div
+      style="
+        width: 640px;
+        height: 480px;
+        background: #000;
+        border: 2px solid #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <img
+        id="video-feed"
+        style="display: none; width: 100%; height: 100%; object-fit: contain"
+      />
+    </div>
+    <p>Server: <span id="server-status">Connecting...</span></p>
+    <p>Stream: <span id="stream-status">Offline</span></p>
+
+    <script>
+      const socket = io();
+      const img = document.getElementById('video-feed');
+      const serverStatus = document.getElementById('server-status');
+      const streamStatus = document.getElementById('stream-status');
+
+      socket.on('connect', () => {
+        serverStatus.innerText = 'Connected';
+        serverStatus.style.color = 'green';
+      });
+
+      socket.on('stream', (data) => {
+        // Support two payload formats:
+        // 1) Binary ArrayBuffer (server emits raw bytes)
+        // 2) JSON object { id, frame } where frame is a base64 JPEG string
+        if (data && typeof data === 'object' && 'frame' in data) {
+          // base64 payload
+          const b64 = data.frame;
+          img.src = 'data:image/jpeg;base64,' + b64;
+          if (img.style.display === 'none') img.style.display = 'block';
+          return;
+        }
+
+        // Fallback: assume ArrayBuffer / binary
+        try {
+          const blob = new Blob([data], { type: 'image/jpeg' });
+          const url = URL.createObjectURL(blob);
+          if (img.style.display === 'none') img.style.display = 'block';
+
+          const oldUrl = img.src;
+          img.src = url;
+          if (oldUrl && oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+        } catch (err) {
+          console.error('Failed to render stream frame', err, data);
+        }
+      });
+
+      socket.on('stream-status', (data) => {
+        if (data.active) {
+          streamStatus.innerText = 'Online';
+          streamStatus.style.color = 'green';
+        } else {
+          streamStatus.innerText = 'Offline';
+          streamStatus.style.color = 'red';
+          img.style.display = 'none';
+          img.src = '';
+        }
+      });
+
+      socket.on('disconnect', () => {
+        serverStatus.innerText = 'Disconnected';
+        serverStatus.style.color = 'red';
+        streamStatus.innerText = 'Offline';
+        streamStatus.style.color = 'red';
+        img.style.display = 'none';
+        img.src = '';
+      });
+    </script>
+  </body>
+</html>
