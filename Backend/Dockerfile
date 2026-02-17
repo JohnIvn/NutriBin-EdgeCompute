@@ -17,6 +17,9 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # Build the NestJS app
 RUN npm run build
 
+# Ensure `static` exists so downstream COPY won't fail when no static assets are produced
+RUN mkdir -p static
+
 # ---------- Runtime stage ----------
 FROM node:20-alpine AS runner
 WORKDIR /app
