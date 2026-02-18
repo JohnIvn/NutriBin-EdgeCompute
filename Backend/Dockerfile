@@ -22,6 +22,13 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Install Python3 and pip
+RUN apk add --no-cache python3 py3-pip
+
+# Copy and install Python requirements
+COPY --from=builder /app/src/requirements.txt ./src/requirements.txt
+RUN pip3 install --no-cache-dir -r ./src/requirements.txt
+
 # Copy package files for production install
 COPY --from=builder /app/package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
