@@ -76,11 +76,20 @@ export class VideoStreamGateway
       [scriptPath, payload.frame],
       { maxBuffer: 1024 * 1024 },
       (err, stdout, stderr) => {
-        let detection: string | null = null;
+        let label: string | null = null;
+        let confidence: number | null = null;
         if (err) {
           console.error('Classifier error:', err, stderr);
-        } else {
-          detection = stdout.trim();
+        } else if (stdout) {
+          // Expecting output as 'label,confidence'
+          const parts = stdout.trim().split(',');
+          if (parts.length === 2) {
+            label = parts[0];
+            confidence = parseFloat(parts[1]);
+          } else {
+            label = stdout.trim();
+            confidence = null;
+          }
         }
         // Ensure static directory exists before writing
         const staticDir = path.join(__dirname, 'static');
@@ -90,7 +99,8 @@ export class VideoStreamGateway
         const staticPath = path.join(staticDir, 'detection.json');
         let detections: Array<{
           id: string;
-          detection: string | null;
+          label: string | null;
+          confidence: number | null;
           timestamp: number;
         }> = [];
         try {
@@ -100,10 +110,15 @@ export class VideoStreamGateway
         } catch (e) {
           detections = [];
         }
-        detections.push({ id: payload.id, detection, timestamp: Date.now() });
+        detections.push({
+          id: payload.id,
+          label,
+          confidence,
+          timestamp: Date.now(),
+        });
         fs.writeFileSync(staticPath, JSON.stringify(detections, null, 2));
         // Optionally emit detection to clients
-        this.server.emit('detection', { id: payload.id, detection });
+        this.server.emit('detection', { id: payload.id, label, confidence });
       },
     );
     // Still emit the frame as before

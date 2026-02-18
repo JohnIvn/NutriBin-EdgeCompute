@@ -17,11 +17,13 @@ def predict_from_base64(b64_string):
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
+        probs = torch.nn.functional.softmax(logits, dim=-1)
         predicted_class_idx = logits.argmax(-1).item()
         label = model.config.id2label[str(predicted_class_idx)]
-    return label
+        confidence = probs[0, predicted_class_idx].item()
+    return label, confidence
 
 if __name__ == "__main__":
     b64 = sys.argv[1]
-    label = predict_from_base64(b64)
-    print(label)
+    label, confidence = predict_from_base64(b64)
+    print(f"{label},{confidence:.4f}")
