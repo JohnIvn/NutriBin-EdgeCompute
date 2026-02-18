@@ -8,6 +8,9 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { execFile } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 type VideoFramePayload = { id: string; frame: string };
 
@@ -46,7 +49,7 @@ export class VideoStreamGateway
   }
 
   @SubscribeMessage('video-frame')
-  handleVideoFrame(
+  async handleVideoFrame(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: unknown,
   ) {
@@ -63,9 +66,43 @@ export class VideoStreamGateway
       console.error('Received invalid payload:', data);
       return;
     }
-
-    // Broadcast a well-typed payload to all connected clients
     const payload: VideoFramePayload = { id: data.id, frame: data.frame };
+
+    // Run local classifier on the frame (base64 image)
+    const scriptPath = path.join(__dirname, 'run_trash_classifier.py');
+    const python = process.env.PYTHON_PATH || 'python';
+    execFile(
+      python,
+      [scriptPath, payload.frame],
+      { maxBuffer: 1024 * 1024 },
+      (err, stdout, stderr) => {
+        let detection: string | null = null;
+        if (err) {
+          console.error('Classifier error:', err, stderr);
+        } else {
+          detection = stdout.trim();
+        }
+        // Save detection result to static/detection.json
+        const staticPath = path.join(__dirname, 'static', 'detection.json');
+        let detections: Array<{
+          id: string;
+          detection: string | null;
+          timestamp: number;
+        }> = [];
+        try {
+          if (fs.existsSync(staticPath)) {
+            detections = JSON.parse(fs.readFileSync(staticPath, 'utf-8'));
+          }
+        } catch (e) {
+          detections = [];
+        }
+        detections.push({ id: payload.id, detection, timestamp: Date.now() });
+        fs.writeFileSync(staticPath, JSON.stringify(detections, null, 2));
+        // Optionally emit detection to clients
+        this.server.emit('detection', { id: payload.id, detection });
+      },
+    );
+    // Still emit the frame as before
     this.server.emit('stream', payload);
   }
 }
