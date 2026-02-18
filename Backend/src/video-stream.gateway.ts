@@ -8,9 +8,9 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { execFile } from 'child_process';
 
 type VideoFramePayload = { id: string; frame: string };
 
@@ -69,7 +69,8 @@ export class VideoStreamGateway
     const payload: VideoFramePayload = { id: data.id, frame: data.frame };
 
     // Run local classifier on the frame (base64 image)
-    const scriptPath = path.join(__dirname, 'run_trash_classifier.py');
+    // Always resolve to the src directory, not dist
+    const scriptPath = path.join(__dirname, '../src/run_trash_classifier.py');
     const python = process.env.PYTHON_PATH || 'python';
     execFile(
       python,
