@@ -1,5 +1,4 @@
-# ---------- Build stage ----------
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 
 # Copy the entire repo
@@ -17,14 +16,16 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 # Build the NestJS app
 RUN npm run build
 
-# ---------- Runtime stage ----------
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
 
-# Install Python3 and pip
-RUN apk add --no-cache python3 py3-pip
+
+# Install Python3, pip, and venv
+RUN apt-get update \
+  && apt-get install -y python3 python3-pip python3-venv \
+  && rm -rf /var/lib/apt/lists/*
 
 # Create a virtual environment for Python dependencies
 RUN python3 -m venv /venv
