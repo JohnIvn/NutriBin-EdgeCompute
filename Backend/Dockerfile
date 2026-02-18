@@ -22,12 +22,17 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+
 # Install Python3 and pip
 RUN apk add --no-cache python3 py3-pip
 
-# Copy and install Python requirements
+# Create a virtual environment for Python dependencies
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+# Copy and install Python requirements inside the venv
 COPY --from=builder /app/src/requirements.txt ./src/requirements.txt
-RUN pip3 install --no-cache-dir -r ./src/requirements.txt
+RUN /venv/bin/pip install --no-cache-dir -r ./src/requirements.txt
 
 # Copy package files for production install
 COPY --from=builder /app/package*.json ./
