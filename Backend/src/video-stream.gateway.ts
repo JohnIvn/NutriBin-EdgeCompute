@@ -82,8 +82,12 @@ export class VideoStreamGateway
         } else {
           detection = stdout.trim();
         }
-        // Save detection result to static/detection.json
-        const staticPath = path.join(__dirname, 'static', 'detection.json');
+        // Ensure static directory exists before writing
+        const staticDir = path.join(__dirname, 'static');
+        if (!fs.existsSync(staticDir)) {
+          fs.mkdirSync(staticDir, { recursive: true });
+        }
+        const staticPath = path.join(staticDir, 'detection.json');
         let detections: Array<{
           id: string;
           detection: string | null;
