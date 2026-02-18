@@ -43,6 +43,9 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/static ./static
 
+# Copy classifier model directory
+COPY --from=builder /app/src/trash-clasiffier-biodegradable ./src/trash-clasiffier-biodegradable
+
 # Railway provides PORT
 ENV PORT=3000
 EXPOSE 3000
